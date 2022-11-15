@@ -15,9 +15,9 @@ builder.Services.AddAuthentication(o =>
 {
     o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     o.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    //o.DefaultChallengeScheme = "Saml2";
-    o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    o.DefaultChallengeScheme = "Saml2";
+    //o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    //o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
 {
