@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Sustainsys.Saml2;
+using Sustainsys.Saml2.AspNetCore2;
 using Sustainsys.Saml2.Metadata;
 using System.Text;
 
@@ -11,41 +12,49 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddAuthentication(o =>
-{
-    o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    o.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    o.DefaultChallengeScheme = "Saml2";
-    //o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    //o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
-{
-    o.TokenValidationParameters = new TokenValidationParameters()
+builder.Services
+    //.AddAuthentication()
+    .AddAuthentication(o =>
     {
-        ValidateIssuer = false,
-        ValidateAudience = false,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ClockSkew = TimeSpan.FromMinutes(1440),
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-    };
-})
-.AddSaml2(options =>
-{
-    options.SPOptions.EntityId = new EntityId("https://localhost:44378");
-    options.IdentityProviders.Add(
-      new IdentityProvider(
-        new EntityId("https://sts.windows.net/a35017a7-9bde-499f-97a9-bc27534e628e/"), options.SPOptions)
-      {
-          MetadataLocation = "https://login.microsoftonline.com/a35017a7-9bde-499f-97a9-bc27534e628e/federationmetadata/2007-06/federationmetadata.xml?appid=855198b4-3d16-4732-bab0-f6286204211e"
-      });
-})
-.AddCookie(o =>
-{
-    o.Cookie.SameSite = SameSiteMode.None;
-});
+        o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        //o.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        //o.DefaultChallengeScheme = Saml2Defaults.Scheme;
+        //o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        //o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, o =>
+    {
+        o.Cookie.SameSite = SameSiteMode.None;
+        o.ForwardChallenge = Saml2Defaults.Scheme;
+        o.ForwardDefaultSelector = ctx => 
+            ctx.Request.Path.StartsWithSegments("/api/Authorization") 
+            ? JwtBearerDefaults.AuthenticationScheme 
+            : null;
+    })
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+    {
+        o.TokenValidationParameters = new TokenValidationParameters()
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(1440),
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+        };
+    })
+    .AddSaml2(Saml2Defaults.Scheme, o =>
+    {
+        o.SPOptions.EntityId = new EntityId("https://localhost:44378");
+        o.IdentityProviders.Add(
+          new IdentityProvider(
+            new EntityId("https://sts.windows.net/a35017a7-9bde-499f-97a9-bc27534e628e/"), o.SPOptions)
+          {
+              MetadataLocation = "https://login.microsoftonline.com/a35017a7-9bde-499f-97a9-bc27534e628e/federationmetadata/2007-06/federationmetadata.xml?appid=855198b4-3d16-4732-bab0-f6286204211e",
+              LoadMetadata = true,
+          });
+    });
 
 builder.Services.AddCors(x =>
 {
